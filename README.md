@@ -8,13 +8,10 @@
 |---|---|
 | **Institución** | Tecnológico de Antioquia — Institución Universitaria |
 | **Curso** | Computación en la Nube · Semestre 2026-1 |
-| **Profesor** | Julian David Florez Sanchez |
 | **Caso** | 03 — Procesamiento de Eventos en Tiempo Real |
 | **Empresa** | PayFlow (Fintech colombiana) |
-| **Plataforma** | Microsoft Azure (Free Tier / Azure for Students) |
-| **Inicio** | 21 de abril de 2026 |
-| **Entrega** | 30 de mayo de 2026 |
-| **Valor** | 20% de la nota final del curso |
+| **Plataforma** | Microsoft Azure 
+
 
 ---
 
