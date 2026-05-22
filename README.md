@@ -193,7 +193,52 @@ El diagrama C2 muestra los cinco servicios Azure que componen la nueva arquitect
 
 ### C3 — Diagrama de Componentes
 
-> _En construcción — próximo commit._
+El diagrama C3 muestra el interior de Azure Functions, con las 5 funciones individuales, su secuencia de ejecución y sus dependencias con Event Hubs, Service Bus y Cosmos DB.
+
+#### Funciones individuales
+
+| Función | Responsabilidad | Trigger | Salida |
+|---|---|---|---|
+| **validarTransaccion** | Valida el formato del evento JSON y detecta datos inválidos o incompletos | Event Hubs (AMQP) | Evento validado o rechazado |
+| **evaluarFraude** | Aplica reglas antifraude en tiempo real antes de autorizar la transacción | Resultado de validarTransaccion | Aprobado o en revisión |
+| **enrutarPorMonto** | Si el monto supera $5.000.000 COP enruta a la cola de alto valor en Service Bus | Resultado de evaluarFraude | Mensaje en Service Bus (AMQP) |
+| **registrarResultado** | Escribe el estado final de la transacción (aprobada, rechazada o en revisión) en Cosmos DB | Resultado de evaluarFraude | Documento en Cosmos DB (HTTP/SDK) |
+| **notificarComercio** | Envía webhook al comercio de forma desacoplada. Su fallo no revierte la autorización | Resultado de registrarResultado | Webhook HTTP al comercio |
+
+#### Flujo interno
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      AZURE FUNCTIONS                        │
+│                                                             │
+│  [Event Hubs] ──AMQP──► validarTransaccion                  │
+│                                  │                          │
+│                          ¿Formato OK?                       │
+│                          NO ──► Rechazada ──► Cosmos DB     │
+│                          SI ──► evaluarFraude               │
+│                                      │                      │
+│                               ¿Es fraude?                   │
+│                               SI ──► En revisión            │
+│                               NO ──► enrutarPorMonto        │
+│                                           │                 │
+│                                    ¿Monto > $5M COP?        │
+│                                    SI ──► [Service Bus]     │
+│                                    NO ──► registrarResultado│
+│                                                │            │
+│                                           [Cosmos DB]       │
+│                                                │            │
+│                                        notificarComercio    │
+│                                                │            │
+│                                        Webhook al comercio  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### Diagrama
+
+![Diagrama C3 - Componentes Azure Functions](assets/c3-componentes.png)
+
+> _Elaborado en draw.io con librería C4. Exportado y disponible en /assets/c3-componentes.png_
+
 
 ---
 
