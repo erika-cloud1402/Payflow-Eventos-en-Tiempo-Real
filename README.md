@@ -162,7 +162,32 @@ El diagrama C1 muestra a PayFlow como sistema central, los actores del negocio y
 
 ### C2 — Diagrama de Contenedores
 
-> _En construcción — próximo commit._
+El diagrama C2 muestra los cinco servicios Azure que componen la nueva arquitectura de PayFlow, el flujo de eventos entre ellos y el sistema legado como fuente externa.
+
+#### Servicios y responsabilidades
+
+| Servicio | Responsabilidad | Protocolo | Tier |
+|---|---|---|---|
+| **Azure Event Hubs** | Punto de entrada. Recibe eventos del sistema legado y canales digitales. Buffer distribuido ante picos de hasta 500 tx/s. | AMQP | Basic (1 TU) |
+| **Azure Functions** | Procesa cada evento: valida formato, evalúa fraude, enruta por monto y registra resultado. | AMQP / HTTP | Consumption Plan |
+| **Azure Service Bus** | Cola de alta prioridad para transacciones > $5.000.000 COP. Garantía de entrega y reintentos automáticos. | AMQP | Basic |
+| **Cosmos DB** | Persiste el estado final de cada transacción con escrituras de alta velocidad. | HTTP/SDK | Free Tier |
+| **Azure Monitor + App Insights** | Observabilidad completa: throughput, tasa de error, latencia y alertas automáticas < 30s. | HTTP | Gratuito 5GB/mes |
+
+#### Flujo de eventos
+
+1. El **Sistema Legado** publica eventos vía AMQP → **Azure Event Hubs** (~85.000 tx/día)
+2. **Event Hubs** dispara **Azure Functions** por cada evento recibido
+3. **Azure Functions** evalúa el monto:
+   - Si es > $5.000.000 COP → enruta a **Azure Service Bus**
+   - En todos los casos → escribe resultado en **Cosmos DB**
+4. **Azure Monitor** recibe métricas de Event Hubs y Functions en tiempo real
+
+#### Diagrama
+
+![Diagrama C2 - Contenedores PayFlow](assets/c2-contenedores.png)
+
+> _Elaborado en draw.io con librería C4. Exportado y disponible en /assets/c2-contenedores.png_
 
 ---
 
