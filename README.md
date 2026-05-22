@@ -524,7 +524,7 @@ Azure Monitor + Application Insights confirma el procesamiento de eventos en tie
 
 ---
 
-### Paso 5 — Cola de Service Bus con mensajes de alto valor
+### Paso 5 — Cola de Service Bus con mensajes de alto valor encolados
 
 Se creó la cola `alto-valor` en el namespace `payflow-servicebus-ns` en Brazil South con las siguientes configuraciones:
 
@@ -533,9 +533,23 @@ Se creó la cola `alto-valor` en el namespace `payflow-servicebus-ns` en Brazil 
 - **Tiempo de vida del mensaje:** 14 días
 - **Estado:** Active
 
-![Evidencia Service Bus](assets/evidencia-servicebus.png)
+Se enviaron 3 transacciones de alto valor (> $5.000.000 COP) directamente a la cola:
 
+| Transacción | Monto | Comercio |
+|---|---|---|
+| tx-alto-001 | $17.810.026 COP | RestauranteY |
+| tx-alto-002 | $25.868.200 COP | Tienda123 |
+| tx-alto-003 | $36.662.567 COP | SuperMercadoX |
+
+**Resultado en Azure:**
+- **Mensajes activos: 3** encolados correctamente
+- **Tamaño actual: 1.1 KB**
+- **Incoming Messages: 3** confirmados en métricas
+
+![Evidencia Service Bus](assets/evidencia-servicebus.png)
 ![Evidencia Cola Alto Valor](assets/evidencia-servicebus-cola.png)
+![Evidencia Script Service Bus](assets/evidencia-servicebus-mensajes.png)
+![Evidencia Mensajes Encolados](assets/evidencia-servicebus-encolados.png)
 
 ---
 
