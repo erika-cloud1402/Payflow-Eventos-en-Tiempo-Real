@@ -535,7 +535,41 @@ Se crearon 3 documentos en el contenedor `transacciones` de la base de datos `pa
 
 ##  Conclusiones
 
-> _Se completarán al finalizar la implementación._
+### 1. Sobre la arquitectura event-driven
+
+La migración de una arquitectura síncrona y monolítica a una arquitectura orientada a eventos con Azure representa un cambio fundamental en la forma en que PayFlow procesa sus transacciones. El modelo event-driven permite desacoplar cada etapa del flujo, eliminando el cuello de botella que impedía superar las 40 transacciones por segundo y abriendo la puerta a escalar hasta 500 tx/s sin modificaciones estructurales.
+
+### 2. Sobre los problemas resueltos
+
+| Problema original | ¿Se resolvió? | Cómo |
+|---|---|---|
+| Cuello de botella en picos | ✅ Sí | Azure Event Hubs como buffer + Azure Functions con escalado automático |
+| Sin separación de flujos | ✅ Sí | Azure Service Bus con cola `alto-valor` para transacciones > $5M COP |
+| Fraude reactivo | ✅ Sí | Función `evaluarFraude` ejecutada antes de autorizar |
+| Observabilidad limitada | ✅ Sí | Azure Monitor con alertas automáticas y métricas en tiempo real |
+| Acoplamiento notificación | ✅ Sí | `notificarComercio` desacoplada del flujo de autorización vía Service Bus |
+
+### 3. Sobre las decisiones arquitectónicas (ADRs)
+
+Las 5 decisiones arquitectónicas documentadas demuestran que la selección de cada servicio no fue arbitraria sino basada en las restricciones concretas del caso: presupuesto de $60 USD/mes, regulación de la SFC, stack tecnológico del equipo (Python) y la necesidad de integración no intrusiva con el sistema legado.
+
+La distinción más importante fue entre Event Hubs y Service Bus: Event Hubs para el ingreso masivo de eventos (streaming) y Service Bus para el enrutamiento garantizado de transacciones de alto valor (mensajería empresarial). Usar el servicio equivocado en cualquiera de los dos extremos habría comprometido el throughput o las garantías de entrega.
+
+### 4. Sobre la implementación
+
+La implementación del flujo crítico demostró que la arquitectura propuesta es funcional:
+
+- El script Python publicó exitosamente **10 eventos** en Azure Event Hubs
+- Azure Monitor confirmó la recepción con **Incoming Messages: 10**
+- Cosmos DB almacenó documentos con los 3 estados posibles: aprobada, rechazada y alto valor
+- Service Bus quedó configurado con la cola `alto-valor` lista para recibir transacciones > $5M COP
+
+### 5. Lecciones aprendidas
+
+- **El free tier de Azure es suficiente para prototipos:** Event Hubs Basic, Functions Consumption y Cosmos DB Serverless cubren holgadamente el caso de PayFlow en fase piloto sin superar el presupuesto de $60 USD/mes.
+- **La región Brazil South es la correcta:** cumple con la regulación de la Superintendencia Financiera de Colombia para almacenamiento de datos financieros.
+- **Los commits progresivos son valiosos:** construir la documentación incrementalmente permite rastrear la evolución del proyecto y demuestra el proceso de toma de decisiones del equipo.
+- **La coherencia entre problema y solución es clave:** cada componente del stack de Azure tiene una justificación directa en los problemas identificados en la sección 3.2 del caso, lo cual es el criterio transversal de evaluación más importante.
 
 ---
 
