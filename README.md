@@ -483,12 +483,24 @@ El script `src/generador_eventos.py` genera y publica 3 tipos de transacciones e
 
 ---
 
-### Paso 3 — Azure Functions desplegada
+### Paso 3 — Azure Functions desplegada y procesando eventos
 
-Se creó la Function App `payflow-functions` en **Brazil South** con Python 3.11 en plan Consumo flexible (Serverless).
+Se creó y desplegó la función `validarTransaccion` en la Function App `payflow-functions` en **Brazil South** con Python 3.11 en plan Consumo flexible (Serverless).
+
+**Configuración de integración:**
+- **Trigger:** Azure Event Hubs (event) — escucha el hub `transacciones`
+- **Función:** validarTransaccion — valida formato, evalúa fraude y enruta por monto
+
+**Métricas de ejecución:**
+- **Total de ejecuciones:** 20
+- **Trigger:** Centro de eventos (Event Hubs)
+- **Estado:** Habilitada ✅
 
 ![Evidencia Azure Functions](assets/evidencia-functions.png)
 ![Evidencia Azure Functions 2](assets/evidencia-functions%20(2).png)
+![Evidencia Function Desplegada](assets/evidencia-functions-desplegada.png)
+![Evidencia Integración Event Hubs](assets/evidencia-functions-integracion.png)
+![Evidencia Métricas de Ejecución](assets/evidencia-functions-logs.png)
 
 ---
 
