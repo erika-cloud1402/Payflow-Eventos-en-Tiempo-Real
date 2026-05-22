@@ -504,9 +504,32 @@ Azure Monitor confirma la recepción de los 10 eventos enviados por el script Py
 
 ---
 
-### Paso 5 — Cola de Service Bus y Cosmos DB
+### Paso 5 — Cola de Service Bus con mensajes de alto valor
 
-> _Evidencias pendientes — se agregarán en el siguiente commit._
+Se creó la cola `alto-valor` en el namespace `payflow-servicebus-ns` en Brazil South con las siguientes configuraciones:
+
+- **Máximo de entregas:** 10
+- **Tamaño máximo:** 1 GB
+- **Tiempo de vida del mensaje:** 14 días
+- **Estado:** Active
+
+![Evidencia Service Bus](assets/evidencia-servicebus.png)
+
+![Evidencia Cola Alto Valor](assets/evidencia-servicebus-cola.png)
+
+---
+
+### Paso 6 — Documentos en Cosmos DB
+
+Se crearon 3 documentos en el contenedor `transacciones` de la base de datos `payflow-db` representando los 3 estados posibles de una transacción:
+
+| ID | Comercio | Monto | Estado |
+|---|---|---|---|
+| tx-001 | LibreriaZ | $267.006 COP | aprobada |
+| tx-002 | RestauranteY | $17.810.026 COP | aprobada (alto valor) |
+| tx-003 | LibreriaZ | $81.620 COP | rechazada |
+
+![Evidencia Cosmos DB](assets/evidencia-cosmosdb3.png)
 
 ---
 
