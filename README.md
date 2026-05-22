@@ -10,7 +10,7 @@
 | **Curso** | Computación en la Nube · Semestre 2026-1 |
 | **Caso** | 03 — Procesamiento de Eventos en Tiempo Real |
 | **Empresa** | PayFlow (Fintech colombiana) |
-| **Plataforma** | Microsoft Azure 
+| **Plataforma** | Microsoft Azure (Free Tier / Azure for Students) |
 
 
 ---
@@ -43,7 +43,10 @@
 | 01 | Julian David Florez | Creación del documento base | 02/05/2026 |
 | 02 | Erika Restrepo | Estructura inicial del repositorio y portada | 21/05/2026 |
 | 03 | Erika Restrepo | Análisis del caso — problemas, requerimientos y stack | 21/05/2026 |
-
+| 04 | Erika Restrepo | Diagramas C1, C2 y C3 agregados al README | 21/05/2026 |
+| 05 | Erika Restrepo | 5 ADRs finalizados | 21/05/2026 |
+| 06 | Erika Restrepo | Implementación completa con evidencias en Azure | 22/05/2026 |
+| 07 | Erika Restrepo | Entrega final: flujo completo, conclusiones y ajustes | 22/05/2026 |
 ---
 
 ## Análisis del Caso
