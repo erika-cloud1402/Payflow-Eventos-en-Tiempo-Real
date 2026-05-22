@@ -242,9 +242,222 @@ El diagrama C3 muestra el interior de Azure Functions, con las 5 funciones indiv
 
 ---
 
-##  Decisiones Arquitectónicas (ADRs)
+## Decisiones Arquitectónicas (ADRs)
 
-> _En construcción — se documentarán 5 ADRs en el próximo commit._
+---
+
+### ADR-01: Azure Event Hubs como punto de entrada de eventos de transacciones
+
+**Fecha:** 21/05/2026
+**Estado:** Aprobado
+
+#### Contexto
+
+PayFlow recibe hasta 85.000 transacciones diarias con picos de hasta 260.000 en temporada alta. El sistema legado actual colapsa a partir de 40 transacciones por segundo. Se necesita un punto de entrada que actúe como buffer distribuido capaz de absorber picos de demanda sin perder eventos, y que se integre de forma no intrusiva con el sistema legado sin requerir modificaciones en él.
+
+#### Alternativas evaluadas
+
+| Criterio | Azure Event Hubs | Azure Service Bus |
+|---|---|---|
+| **Modelo** | Streaming de eventos, alto volumen | Mensajería empresarial, cola de mensajes |
+| **Throughput** | Hasta millones de eventos/segundo | Miles de mensajes/segundo |
+| **Retención** | 1 día (Basic tier) | Hasta 14 días |
+| **Orden estricto** | No garantizado | Garantizado por sesión |
+| **Dead-letter queue** | No | Sí |
+| **Costo Basic tier** | Muy bajo (~$0.028/millón de eventos) | Bajo (por operación) |
+| **Integración legado** | Ideal para publicar eventos en masa | Mejor para mensajes individuales |
+
+#### Decisión
+
+Se elige **Azure Event Hubs** como punto de entrada del sistema.
+
+Event Hubs es la opción correcta porque el problema de PayFlow es de **volumen y velocidad**, no de mensajería garantizada. El sistema legado necesita publicar eventos en masa sin modificaciones, y Event Hubs permite exactamente eso actuando como buffer distribuido. Service Bus está diseñado para mensajería empresarial con garantías de orden, lo cual es necesario en etapas posteriores del flujo (enrutamiento de alto valor) pero no en el punto de entrada.
+
+#### Consecuencias
+
+**Ventajas:**
+- Absorbe picos de hasta 500 tx/s sin degradación
+- Integración no intrusiva con el sistema legado
+- Escala automáticamente sin intervención manual
+- Costo mínimo en Basic tier
+
+**Trade-offs:**
+- No garantiza orden estricto de eventos (aceptable para el caso de PayFlow)
+- Retención de solo 1 día en Basic tier (suficiente para el prototipo)
+- No tiene dead-letter queue nativa (los errores se manejan en Azure Functions)
+
+---
+
+### ADR-02: Azure Functions como motor de procesamiento de eventos
+
+**Fecha:** 21/05/2026
+**Estado:** Aprobado
+
+#### Contexto
+
+Cada evento que llega a Event Hubs debe ser procesado: validar su formato, evaluar fraude, enrutar por monto y registrar el resultado. Se necesita un motor de procesamiento que escale automáticamente ante picos, que tenga un trigger nativo para Event Hubs, y que el equipo de ingeniería de PayFlow pueda implementar en Python o Node.js.
+
+#### Alternativas evaluadas
+
+| Criterio | Azure Functions | Azure Stream Analytics |
+|---|---|---|
+| **Modelo** | Procesamiento por evento individual | Procesamiento de streams con SQL |
+| **Trigger Event Hubs** | Nativo y directo | Sí, como input |
+| **Lenguajes** | Python, Node.js, C#, Java | Solo SQL-like (SAQL) |
+| **Lógica de negocio** | Código completo, sin límites | Limitado a consultas analíticas |
+| **Escalado** | Automático en Consumption Plan | Automático por Streaming Units |
+| **Costo** | 1M ejecuciones/mes gratis | Desde $0.11/hora por SU |
+| **Reglas antifraude** | Implementables en código | Muy limitadas en SQL |
+
+#### Decisión
+
+Se elige **Azure Functions** en Consumption Plan.
+
+Azure Stream Analytics está diseñado para análisis de streams con agregaciones y ventanas de tiempo, no para lógica de negocio compleja como validación de formato, reglas antifraude y enrutamiento condicional. Azure Functions permite implementar toda esta lógica en Python (lenguaje que domina el equipo de PayFlow), tiene trigger nativo para Event Hubs, escala automáticamente y tiene 1 millón de ejecuciones gratuitas al mes, lo cual cubre holgadamente el prototipo.
+
+#### Consecuencias
+
+**Ventajas:**
+- Implementación en Python, lenguaje del equipo de ingeniería
+- Trigger nativo de Event Hubs sin configuración adicional
+- Escalado automático hasta 500 tx/s en Consumption Plan
+- Costo cero durante la fase piloto (1M ejecuciones gratis)
+- Lógica antifraude implementable sin restricciones
+
+**Trade-offs:**
+- Cold start en la primera ejecución tras inactividad (latencia adicional de ~1s)
+- Límite de tiempo de ejecución de 10 minutos por función (no es problema para transacciones)
+- Requiere gestión del código fuente y despliegue
+
+---
+
+### ADR-03: Cosmos DB como base de datos de persistencia de transacciones
+
+**Fecha:** 21/05/2026
+**Estado:** Aprobado con condición
+
+#### Contexto
+
+Cada transacción procesada debe persistirse con su estado final (aprobada, rechazada o en revisión). El sistema procesa múltiples tipos de transacciones (compra, reembolso, pago de servicios, transferencias) con estructuras de datos distintas. Se requieren escrituras de alta velocidad y un modelo de datos flexible. Restricción importante: el Free Tier de Cosmos DB es uno por suscripción y puede estar ocupado por otro equipo de PayFlow.
+
+#### Alternativas evaluadas
+
+| Criterio | Cosmos DB | Azure SQL Database |
+|---|---|---|
+| **Modelo de datos** | NoSQL, documentos JSON flexibles | Relacional, esquema fijo |
+| **Escrituras** | Muy alta velocidad (1.000 RU/s gratis) | Alta velocidad con índices |
+| **Esquema** | Flexible, sin migraciones | Rígido, requiere migraciones |
+| **Escalado** | Horizontal automático | Vertical principalmente |
+| **Costo Free Tier** | 1.000 RU/s, 25 GB — 1 por suscripción | 32 GB — 1 por suscripción |
+| **Latencia** | < 10ms en escritura | < 10ms con configuración |
+| **Consultas complejas** | Limitadas en NoSQL | Completas con SQL |
+
+#### Decisión
+
+Se elige **Cosmos DB** como primera opción. Si el Free Tier ya está ocupado en la suscripción, se usa **Azure SQL Database Free Tier** como alternativa.
+
+Cosmos DB es la opción ideal porque el modelo de datos de PayFlow es heterogéneo (distintos tipos de transacciones con campos diferentes) y las escrituras de alta velocidad son críticas para cumplir la latencia < 2s en P99. El esquema flexible evita migraciones cada vez que se agrega un nuevo tipo de transacción.
+
+**Condición:** antes de desplegar, verificar si el Free Tier de Cosmos DB está disponible en la suscripción. Si está ocupado, usar Azure SQL Database Free Tier y documentar el cambio.
+
+#### Consecuencias
+
+**Ventajas:**
+- Modelo de datos flexible para los distintos tipos de transacción de PayFlow
+- Escrituras de alta velocidad con latencia < 10ms
+- Free Tier cubre holgadamente el prototipo (1.000 RU/s, 25 GB)
+- Sin necesidad de migraciones de esquema
+
+**Trade-offs:**
+- Free Tier limitado a una cuenta por suscripción (puede estar ocupado)
+- Consultas analíticas complejas son más difíciles que en SQL
+- Si se usa SQL como alternativa, requiere definir esquema fijo desde el inicio
+
+---
+
+### ADR-04: Azure Service Bus para el enrutamiento de transacciones de alto valor
+
+**Fecha:** 21/05/2026
+**Estado:** Aprobado
+
+#### Contexto
+
+Las transacciones superiores a $5.000.000 COP deben enrutarse por un canal diferenciado con mayor prioridad de procesamiento y registro de auditoría obligatorio. Se necesita un servicio que garantice la entrega de estos mensajes, soporte reintentos automáticos en caso de fallo y ofrezca dead-letter queue para los mensajes que no puedan procesarse.
+
+#### Alternativas evaluadas
+
+| Criterio | Azure Service Bus | Azure Storage Queue |
+|---|---|---|
+| **Garantía de entrega** | At-least-once garantizado | At-least-once garantizado |
+| **Dead-letter queue** | Sí, nativa | No |
+| **Reintentos automáticos** | Sí, configurables | No, manual |
+| **Orden de mensajes** | Garantizado por sesión | No garantizado |
+| **Tamaño máximo mensaje** | 256 KB (Basic) | 64 KB |
+| **Tiempo retención** | Hasta 14 días | Hasta 7 días |
+| **Costo** | Bajo por operación | Muy bajo por operación |
+| **Auditoría** | Logs detallados | Logs básicos |
+
+#### Decisión
+
+Se elige **Azure Service Bus** para el enrutamiento de transacciones de alto valor.
+
+Las transacciones de alto valor (> $5M COP) requieren garantías que Azure Storage Queue no puede ofrecer: dead-letter queue para capturar mensajes fallidos, reintentos automáticos configurables y logs de auditoría detallados. Dado que estas transacciones representan el mayor riesgo financiero para PayFlow, la robustez de Service Bus justifica su costo adicional sobre Storage Queue.
+
+#### Consecuencias
+
+**Ventajas:**
+- Dead-letter queue captura transacciones de alto valor que fallan en el procesamiento
+- Reintentos automáticos sin intervención manual
+- Registro de auditoría obligatorio cumplido por los logs de Service Bus
+- Orden garantizado por sesión para transacciones del mismo comercio
+
+**Trade-offs:**
+- Costo ligeramente mayor que Storage Queue (mínimo por operación)
+- Configuración más compleja que Storage Queue
+- Basic tier no soporta topics (solo colas), suficiente para el prototipo
+
+---
+
+### ADR-05: Azure Monitor + Application Insights como solución de observabilidad
+
+**Fecha:** 21/05/2026
+**Estado:** Aprobado
+
+#### Contexto
+
+El sistema actual de PayFlow no tiene monitoreo centralizado. El equipo de operaciones se entera de los fallos por quejas de comercios en WhatsApp. El requerimiento es tener alertas automáticas con latencia menor a 30 segundos para detectar anomalías antes de que los comercios reporten. Se necesita observabilidad del throughput de Event Hubs, tasa de error de Functions y latencia por tipo de transacción.
+
+#### Alternativas evaluadas
+
+| Criterio | Azure Monitor + App Insights | Datadog / New Relic |
+|---|---|---|
+| **Integración Azure** | Nativa, sin configuración extra | Requiere agente y configuración |
+| **Trazas distribuidas** | Automáticas en Functions | Requiere instrumentación manual |
+| **Alertas** | Configurables, latencia < 30s | Configurables, latencia < 30s |
+| **Costo** | Gratuito hasta 5 GB logs/mes | Desde $15/host/mes |
+| **Dashboards** | Incluidos en Azure Portal | Muy completos pero de pago |
+| **Curva de aprendizaje** | Baja (mismo portal Azure) | Media-alta |
+| **Presupuesto piloto** | Dentro de $60 USD/mes | Fuera del presupuesto |
+
+#### Decisión
+
+Se elige **Azure Monitor + Application Insights** como solución de observabilidad.
+
+La integración nativa con Azure es el factor decisivo. Application Insights se adjunta a Azure Functions con una sola línea de configuración y provee trazas distribuidas automáticas sin instrumentación manual. El costo es cero dentro del Free Tier (5 GB logs/mes), lo cual es fundamental dado el presupuesto de $60 USD/mes para la fase piloto. Datadog y New Relic son soluciones más completas pero están fuera del presupuesto y requieren configuración adicional que aumenta la complejidad del prototipo.
+
+#### Consecuencias
+
+**Ventajas:**
+- Integración nativa con todos los servicios Azure del stack
+- Trazas distribuidas automáticas en Azure Functions sin código adicional
+- Alertas automáticas con latencia < 30s cumpliendo el requerimiento
+- Costo cero en el Free Tier (5 GB logs/mes cubre el prototipo)
+- Dashboard centralizado en el mismo portal Azure
+
+**Trade-offs:**
+- Menos funcionalidades avanzadas que Datadog o New Relic
+- Los 5 GB gratuitos pueden limitarse en producción con alto volumen
+- Vendor lock-in con el ecosistema Azure (migrar a otra nube requiere cambiar herramienta)
 
 ---
 
