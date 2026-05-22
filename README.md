@@ -461,9 +461,52 @@ La integración nativa con Azure es el factor decisivo. Application Insights se 
 
 ---
 
-##  Implementación del Flujo Crítico
+## Implementación del Flujo Crítico
 
-> _En construcción — evidencias se agregarán conforme avance la implementación en Azure._
+### Paso 1 — Azure Event Hubs desplegado
+
+Se creó el namespace `payflow-events-ns` en la región **Brazil South** con el hub de transacciones `transacciones` configurado con 2 particiones y retención de 1 día.
+
+![Evidencia Event Hubs](assets/evidencia-eventhub.png)
+
+---
+
+### Paso 2 — Script Python generador de eventos
+
+El script `src/generador_eventos.py` genera y publica 3 tipos de transacciones en Event Hubs:
+
+-  **5 transacciones normales** (monto < $5.000.000 COP)
+-  **3 transacciones de alto valor** (monto > $5.000.000 COP)
+-  **2 transacciones con formato inválido** (para probar validación)
+
+![Evidencia Script Python](assets/evidencia-script-python.png)
+
+---
+
+### Paso 3 — Azure Functions desplegada
+
+Se creó la Function App `payflow-functions` en **Brazil South** con Python 3.11 en plan Consumo flexible (Serverless).
+
+![Evidencia Azure Functions](assets/evidencia-functions.png)
+![Evidencia Azure Functions 2](assets/evidencia-functions%20(2).png)
+
+---
+
+### Paso 4 — Azure Monitor — Métricas en tiempo real
+
+Azure Monitor confirma la recepción de los 10 eventos enviados por el script Python:
+
+- **Incoming Messages: 10** eventos recibidos
+- **Successful Requests: 7** solicitudes exitosas
+- **Incoming Bytes: 2.12 KB** de datos procesados
+
+![Evidencia Azure Monitor](assets/evidencia-monitor.png)
+
+---
+
+### Paso 5 — Cola de Service Bus y Cosmos DB
+
+> _Evidencias pendientes — se agregarán en el siguiente commit._
 
 ---
 
