@@ -504,15 +504,23 @@ Se creó y desplegó la función `validarTransaccion` en la Function App `payflo
 
 ---
 
-### Paso 4 — Azure Monitor — Métricas en tiempo real
+### Paso 4 — Azure Monitor y Live Metrics en tiempo real
 
-Azure Monitor confirma la recepción de los 10 eventos enviados por el script Python:
+Azure Monitor + Application Insights confirma el procesamiento de eventos en tiempo real por la función `validarTransaccion`:
 
-- **Incoming Messages: 10** eventos recibidos
+- **Incoming Messages: 10** eventos recibidos en Event Hubs
 - **Successful Requests: 7** solicitudes exitosas
 - **Incoming Bytes: 2.12 KB** de datos procesados
+- **2 servidores online** procesando eventos en vivo
+- **Trazas en tiempo real** del hub `transacciones` visibles en el panel de telemetría
 
 ![Evidencia Azure Monitor](assets/evidencia-monitor.png)
+
+![Live Metrics 1](assets/livemetrics1.png)
+
+![Live Metrics 2](assets/livemetrics2.png)
+
+![Live Metrics 3](assets/livemetrics3.png)
 
 ---
 
