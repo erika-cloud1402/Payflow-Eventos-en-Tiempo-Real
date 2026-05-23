@@ -131,6 +131,17 @@ Esta tabla demuestra que cada problema identificado tiene una solución concreta
 | P5 — Acoplamiento notificación | **Azure Service Bus** desacopla completamente la notificación al comercio. La function `notificarComercio` opera de forma independiente; su fallo no revierte la autorización. |
 
 ---
+## Arquitectura de Referencia Microsoft
+
+Este caso está basado en las siguientes arquitecturas oficiales de Microsoft Azure:
+
+- [Event-driven architecture](https://learn.microsoft.com/es-es/azure/architecture/guide/architecture-styles/event-driven)
+- [Azure Event Hubs](https://learn.microsoft.com/es-es/azure/event-hubs/event-hubs-about)
+- [Azure Functions](https://learn.microsoft.com/es-es/azure/azure-functions/functions-bindings-event-hubs)
+- [Azure Service Bus](https://learn.microsoft.com/es-es/azure/service-bus-messaging/service-bus-messaging-overview)
+- [Azure Cosmos DB](https://learn.microsoft.com/es-es/azure/cosmos-db/introduction)
+- [Azure Monitor](https://learn.microsoft.com/es-es/azure/azure-monitor/overview)
+---
 
 ##  Modelo C4
 
