@@ -250,6 +250,16 @@ El diagrama C3 muestra el interior de Azure Functions, con las 5 funciones indiv
 │                                                │            │
 │                                     Webhook al comercio     │
 └─────────────────────────────────────────────────────────────┘
+**Descripción de cada etapa:**
+
+| Etapa | Componente Azure | Descripción |
+|---|---|---|
+| **1. Ingreso** | Azure Event Hubs (AMQP) | El evento de transacción llega desde el sistema legado al buffer distribuido. |
+| **2. Validación de formato** | Azure Functions — `validarTransaccion` | Verifica que el payload tenga la estructura correcta. Si falla, la transacción se rechaza de inmediato. |
+| **3. Evaluación de fraude** | Azure Functions — `evaluarFraude` | Aplica las reglas antifraude **antes** de autorizar. Si se detecta fraude, la transacción queda en revisión manual. Resuelve el problema P3. |
+| **4. Enrutamiento por monto** | Azure Functions — `enrutarPorMonto` | Transacciones superiores a **$5.000.000 COP** se desvían a la cola de alta prioridad en Azure Service Bus. Resuelve el problema P2. |
+| **5. Persistencia** | Azure Cosmos DB | El estado final de la transacción (`aprobada`, `rechazada`, `alto-valor`) se registra en el contenedor `transacciones`. |
+| **6. Notificación desacoplada** | Azure Service Bus + `notificarComercio` | El webhook al comercio opera de forma independiente. Un fallo en esta etapa **no revierte** la autorización ya registrada. Resuelve el problema P5. |
 ```
 
 #### Diagrama
