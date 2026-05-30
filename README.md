@@ -686,4 +686,14 @@ La implementación del flujo crítico demostró que la arquitectura propuesta es
 
 ---
 
+##  Video Explicativo
+
+El siguiente video presenta una explicación general del proyecto PayFlow:
+- Contexto del caso de estudio y problemas identificados
+- Arquitectura propuesta con los servicios Azure
+- Decisiones arquitectónicas (ADRs)
+- Evidencias de la implementación en Azure
+
+[![Ver video explicativo en YouTube](https://img.shields.io/badge/Ver%20Video-YouTube-red)](https://youtu.be/UWD5xsI_ppk)
+
 *Documento construido progresivamente. Cada sección se agrega en su commit correspondiente.*
