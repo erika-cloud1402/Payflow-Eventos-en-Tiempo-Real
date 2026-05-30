@@ -272,6 +272,12 @@ El diagrama C3 muestra el interior de Azure Functions, con las 5 funciones indiv
 
 *Diagrama C3 — Componentes internos del Procesador de Transacciones. Muestra los 5 componentes (Validador de Formato, Evaluador de Fraude, Enrutador por Monto, Registrador de Resultado, Notificador de Comercio) y sus dependencias con el Buffer de Eventos, Cola de Alta Prioridad y Base de Datos. Elaborado en draw.io con notación C4.*
 
+### Diagrama Final — Arquitectura de Referencia Azure
+
+El diagrama final muestra la arquitectura completa de PayFlow con los servicios Azure reales, sus logos oficiales y el flujo de eventos entre ellos.
+
+![Arquitectura Final PayFlow](assets/arquitectura-final.png)
+*Arquitectura final de PayFlow desplegada en Microsoft Azure — Brazil South. Muestra los 5 servicios Azure seleccionados: Azure Event Hubs (buffer de eventos), Azure Functions (procesador), Azure Service Bus (cola alto valor), Cosmos DB (persistencia) y Azure Monitor + App Insights (observabilidad), conectados mediante protocolo AMQP y HTTP con flechas punteadas que indican el flujo de eventos.*
 
 ---
 
